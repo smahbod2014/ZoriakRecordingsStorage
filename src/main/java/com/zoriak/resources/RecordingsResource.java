@@ -8,12 +8,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.Consumes;
+import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -26,41 +31,66 @@ import java.util.UUID;
 public final class RecordingsResource {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RecordingsResource.class);
+    private static final String RECORDINGS_DIRECTORY = "recordings/";
 
     public RecordingsResource() {
-
+        final File recordingsDir = new File(RECORDINGS_DIRECTORY);
+        if (!recordingsDir.isDirectory()) {
+            if (!recordingsDir.mkdir()) {
+                LOGGER.warn("Failed to create directory '{}'", RECORDINGS_DIRECTORY);
+            } else {
+                LOGGER.info("Successfully created directory '{}'", RECORDINGS_DIRECTORY);
+            }
+        } else {
+            LOGGER.info("Directory '{}' already exists. Continuing", RECORDINGS_DIRECTORY);
+        }
     }
 
-    @Path("/test")
-    @POST
-    public RecordingResponse postRecording(final Recording recording) {
-        LOGGER.info("Received a POST request for recording with id {}", recording.getId());
-        return new RecordingResponse(recording.getId());
-    }
-
-//    @POST
-//    @Consumes(MediaType.MULTIPART_FORM_DATA)
-//    public void postFile(@FormDataParam("file") final InputStream inputStream,
-//                         @FormDataParam("file") final FormDataContentDisposition detail) throws IOException {
-//        LOGGER.info("Posting a file");
-//
-//        writeToFile(inputStream, "./output.txt");
-//
-//        Response.ok();
-//    }
-
+    /**
+     * Uploads a new recording
+     *
+     * @param inputStream the recording
+     * @param detail information about the file
+     * @return a response indicating if the file was successfully uploaded
+     * @throws IOException if the file could not be created for any reason
+     */
     @POST
     @Consumes(MediaType.MULTIPART_FORM_DATA)
-    public void postFile(@FormDataParam("file") final InputStream inputStream,
-                         @FormDataParam("file") final FormDataContentDisposition detail) throws IOException {
-        LOGGER.info("Posting a file");
-
-        writeToFile(inputStream, "./output.wav");
-
-        Response.ok();
+    public RecordingResponse postFile(@FormDataParam("file") final InputStream inputStream,
+                                      @FormDataParam("file") final FormDataContentDisposition detail) throws IOException {
+        UUID id = UUID.randomUUID();
+        LOGGER.info("Storing a new recording with id {}", id);
+        writeToFile(inputStream, RECORDINGS_DIRECTORY + id + ".wav");
+        return new RecordingResponse(id);
     }
 
-    // save uploaded file to new location
+    /**
+     * Retrieves a recording by its id
+     *
+     * @param id the id of the recording to retrieve in the form of a {@link UUID}
+     * @return the recording as a downloadable attachment
+     * @throws FileNotFoundException if the recording didn't exist/could not be found
+     */
+    @GET
+    @Path("/{id}")
+    @Produces(MediaType.APPLICATION_OCTET_STREAM)
+    public Response getRecording(@PathParam("id") final UUID id) throws FileNotFoundException {
+        final File recording = new File(RECORDINGS_DIRECTORY + id + ".wav");
+        if (!recording.exists()) {
+            return Response.status(Response.Status.NOT_FOUND).build();
+        }
+        return Response.ok(new FileInputStream(recording))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + id + ".wav\"")
+                .build();
+    }
+
+    /**
+     * Helper function to write a file, the recording in this case
+     *
+     * @param uploadedInputStream the file to write
+     * @param uploadedFileLocation the location to write it to as a path
+     * @throws IOException if the write failed for any reason
+     */
     private void writeToFile(InputStream uploadedInputStream, String uploadedFileLocation) throws IOException {
         int read;
         final int BUFFER_LENGTH = 1024;
