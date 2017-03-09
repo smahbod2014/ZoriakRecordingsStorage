@@ -1,0 +1,20 @@
+server:
+  applicationConnectors:
+    - type: http
+      # The port the application will listen on
+      port: 9050
+  adminConnectors:
+    - type: http
+      # The admin port
+      port: 9051
+
+logging:
+  level: INFO
+  appenders:
+    - type: console
+  loggers:
+    com.zoriak:
+      level: DEBUG
+      additive: true
+
+version: 1.0.0
