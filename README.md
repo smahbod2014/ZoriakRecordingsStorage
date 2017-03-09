@@ -25,3 +25,15 @@ Retrieve a recording from the server. Best to just input the URL in a browser in
 `GET to localhost:9050/recordings/{id}`
 
 `id` is in the form of a UUID (e.g. 67199d03-1cae-420d-b932-78617c466861)
+
+## Building the Application
+
+Requirements: Java 8, Maven
+
+Then run:
+
+`mvn clean install`
+
+## Running the Application
+
+`java -jar target/recordings-storage-1.0-SNAPSHOT.jar server zoriak.yml`
